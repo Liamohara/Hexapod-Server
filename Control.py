@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from math import acos, atan2, cos, degrees, pi, radians, sin, sqrt
 from numpy import matrix
+from time import sleep
 
 from Servo import Servo
 
@@ -23,12 +24,12 @@ class Control:
         ])  # The channel of each servo.
 
         self.__leg_coords = matrix([
-            [143, 0, -90],
-            [143, 0, -90],
-            [143, 0, -90],
-            [143, 0, -90],
-            [143, 0, -90],
-            [143, 0, -90]
+            [140, 0, 0],
+            [140, 0, 0],
+            [140, 0, 0],
+            [140, 0, 0],
+            [140, 0, 0],
+            [140, 0, 0]
         ])  # The position vector of each leg tip.
 
         self.__angles = matrix([
@@ -40,25 +41,20 @@ class Control:
             [90, 0, 0]
         ])  # The angle of each servo.
 
-        # self.__coord_offset = matrix([
-        #     [83, -165, -169],
-        #     [-4, -169, -154],
-        #     [-36, -144, -138],
-        #     [140, -26, -14],
-        #     [40, 0, -20],
-        #     [42, -11, -33]
-        # ])  # A coordinate offset for each leg tip - accounting for the misalignment of each servo.
-
         self.__coord_offset = matrix([
-            [-18, 50, -5],
+            [-15, 55, 10],
             [0, 15, 0],
-            [0, 10, 20],
-            [0, 5, 0],
-            [-15, 22, 0],
-            [-10, 10, -20]
+            [-8, 10, -30],
+            [-15, 0, -15],
+            [-15, 22, -21],
+            [-15, 20, 10]
         ])  # A coordinate offset for each leg tip - accounting for the misalignment of each servo.
 
         self.__setServos()
+
+        sleep(.2)
+
+        self.__walk(10)
 
     def __setServos(self):
         if self.__inRangeOfMotion():
@@ -94,17 +90,13 @@ class Control:
         )
 
         gamma = pi - epsilon
-        beta = atan2(z, x_23) - atan2(self.__l3*sin(epsilon),
-                                      self.__l2 - self.__l3*cos(epsilon))
-
-        print(beta)
+        beta = - atan2(z, x_23) - atan2(self.__l3*sin(epsilon),
+                                        self.__l2 - self.__l3*cos(epsilon))
 
         # Convert angles for use with servos
         a = round(degrees(pi/2 - alpha))
         b = round(degrees(pi/2 - beta))
         c = round(degrees(gamma))
-
-        print(beta)
 
         return a, b, c
 
@@ -128,19 +120,72 @@ class Control:
         else:
             return value
 
+    def __balance(self):  #  TODO Save for API
+        self.__leg_coords = matrix([
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40]
+        ])  # The position vector of each leg tip.
+        self.__setServos()
+
+    def __walk(self, paces):
+        #############
+        # The movement of the legs is modelled using a function of sine:
+        #
+        # y = | 40 * sin(9x/2) | - 40
+        #
+        #     0     20     40     80
+        #   0 +---- ,-, --------- ,-
+        #     |    /   \         /
+        #     |   /     \       /
+        #     |  /       \     /
+        #     | /         \   /
+        # -40 |/           '-'
+        #
+        #############
+
+        precision = 40
+
+        self.__balance()
+
+        for _ in range(paces):
+            step = int(80/precision)
+
+            for y in range(0, 80 + step, step):
+                z = abs(40 * sin(9 * radians(y) / 2)) - 40
+
+                if y <= 40:
+                    self.__leg_coords = matrix([
+                        [140, y, z],
+                        [140, 0, -40],
+                        [140, y, z],
+                        [140, 0, -40],
+                        [140, y, z],
+                        [140, 0, -40]
+                    ])
+
+                    self.__setServos()
+                else:
+                    y = y - 40
+                    self.__leg_coords = matrix([
+                        [140, 0, -40],
+                        [140, y, z],
+                        [140, 0, -40],
+                        [140, y, z],
+                        [140, 0, -40],
+                        [140, y, z]
+                    ])
+                    self.__setServos()
+
+                sleep(.05)
+
+            sleep(4)
+            self.__balance()
+
     # Saved for API
-
-    # def __balance(self): # TODO Save for API
-    #     self.__leg_coord = matrix([
-    #         [140, 0, 0],
-    #         [140, 0, 0],
-    #         [140, 0, 0],
-    #         [140, 0, 0],
-    #         [140, 0, 0],
-    #         [140, 0, 0]
-    #     ])  # The position vector of each leg tip.
-
-    #     self.__setServos()
 
     # def __anglesToCoords(self, a, b, c):
     #     # Converting angles for use in forward kinematic calculations.
