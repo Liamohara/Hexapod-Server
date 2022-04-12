@@ -3,23 +3,21 @@ from adafruit_servokit import ServoKit
 
 class Servo:
     def __init__(self):
-        self.kit_40 = ServoKit(channels=16, address=0x40)
-        self.kit_41 = ServoKit(channels=16, address=0x41)
+        self.__kit_40 = ServoKit(channels=16, address=0x40)
+        self.__kit_41 = ServoKit(channels=16, address=0x41)
 
-    def setServoAngle(self, channel, angle):
+    def setAngle(self, channel, angle):
         if channel < 16:
-            self.kit_41.servo[channel].angle = angle
+            self.__kit_41.servo[channel].angle = angle
         elif channel >= 16 and channel < 32:
             channel -= 16
-            self.kit_40.servo[channel].angle = angle
+            self.__kit_40.servo[channel].angle = angle
         else:
-            print("Invalid servo angle. Must be 0-31.")
+            print("Invalid channel. Must be 0-31.")
 
-    def relax(self):
-        for i in range(8):
-            self.kit_41.servo[i+8].angle = None
-            self.kit_40.servo[i].angle = None
-            self.kit_40.servo[i+8].angle = None
+    def relax(self, channel):
+        self.setAngle(channel, None)
+
 
 ########################################################
 
@@ -43,11 +41,26 @@ class Servo:
 #                [16]######[15]
 #                ##          ##
 #               ##            ##
-#    [21][20][19]              [10][11][12]
+#    [21][20][19]              [12][11][10]
 #               ##            ##
 #                ##          ##
 #                [22]#######[9]
 #               [23]         [8]
 #              [27]  [Rear]   [31]
+
+
+#               \               /
+#                \             /
+#                 \           /
+#                  *---------*
+#                 /           \
+#                /             \
+#       --------*               *---------
+#                \             /
+#                 \           /
+#                  *---------*
+#                 /           \
+#                /             \
+#               /               \
 
 ########################################################
