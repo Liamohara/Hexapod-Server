@@ -9,13 +9,13 @@ from Servo import Servo
 
 class Control:
     def __init__(self):
-        self.__SERVO_MANAGER = Servo()
+        self.__SERVO = Servo()
 
         self.__L1 = 33
         self.__L2 = 90
         self.__L3 = 110
 
-        self.__servo_channels = matrix([
+        self.__SERVO_CHANNELS = matrix([
             [15, 14, 13],
             [12, 11, 10],
             [9, 8, 31],
@@ -23,6 +23,24 @@ class Control:
             [19, 20, 21],
             [16, 17, 18]
         ])  # The channel of each servo.
+
+        self.__BALANCE_LEG_COORDS = matrix([
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40],
+            [140, 0, -40]
+        ])  # The position vector of each leg tip in the "balance" position.
+
+        self.__COORD_OFFSET = matrix([
+            [-15, 55, 10],
+            [0, 15, 0],
+            [-8, 10, -30],
+            [-15, 0, -15],
+            [-15, 22, -21],
+            [-15, 20, 10]
+        ])  # A coordinate offset for each leg tip - accounting for the misalignment of each servo.
 
         self.__leg_coords = matrix([
             [140, 0, 0],
@@ -33,15 +51,6 @@ class Control:
             [140, 0, 0]
         ])  # The position vector of each leg tip.
 
-        self.__balance_leg_coords = matrix([
-            [140, 0, -40],
-            [140, 0, -40],
-            [140, 0, -40],
-            [140, 0, -40],
-            [140, 0, -40],
-            [140, 0, -40]
-        ])  # The position vector of each leg tip in the "balance" position.
-
         self.__calibrated_leg_coords = matrix([
             [140, 0, 0],
             [140, 0, 0],
@@ -50,15 +59,6 @@ class Control:
             [140, 0, 0],
             [140, 0, 0]
         ])
-
-        self.__coord_offset = matrix([
-            [-15, 55, 10],
-            [0, 15, 0],
-            [-8, 10, -30],
-            [-15, 0, -15],
-            [-15, 22, -21],
-            [-15, 20, 10]
-        ])  # A coordinate offset for each leg tip - accounting for the misalignment of each servo.
 
         self.__angles = matrix([
             [90, 0, 0],
@@ -70,10 +70,6 @@ class Control:
         ])  # The angle of each servo.
 
         self.__setServos()
-
-        sleep(.2)
-
-        self.__walk(5, 135)
 
     def __setServos(self):
         if self.__inRangeOfMotion():
@@ -90,8 +86,8 @@ class Control:
 
             for leg in range(6):
                 for joint in range(3):
-                    self.__SERVO_MANAGER.setAngle(
-                        self.__servo_channels[leg, joint],
+                    self.__SERVO.setAngle(
+                        self.__SERVO_CHANNELS[leg, joint],
                         self.__restrict(self.__angles[leg, joint], 0, 180)
                     )
 
@@ -129,7 +125,7 @@ class Control:
         return True
 
     def __calibratePosition(self):
-        self.__calibrated_leg_coords = self.__leg_coords + self.__coord_offset
+        self.__calibrated_leg_coords = self.__leg_coords + self.__COORD_OFFSET
 
     def __restrict(self, value, min, max):
         if value < min:
@@ -140,11 +136,11 @@ class Control:
             return value
 
     def __balance(self):  #  TODO Save for API
-        self.__leg_coords = deepcopy(self.__balance_leg_coords)
+        self.__leg_coords = deepcopy(self.__BALANCE_LEG_COORDS)
 
         self.__setServos()
 
-    def __walk(self, paces, angle, precision=40):
+    def walk(self, paces, angle, precision=40):
         #############
         # The movement of the legs is modelled using a function of sine:
         #
@@ -199,10 +195,10 @@ class Control:
                 sleep(.05)
 
             # Moves Hexapod into balance position SLOWLY so legs don't slip.
-            coord_diff = self.__balance_leg_coords - self.__leg_coords
+            coord_diff = self.__BALANCE_LEG_COORDS - self.__leg_coords
 
             for count in range(10, 0, -1):
-                self.__leg_coords = self.__balance_leg_coords - count * coord_diff / 10
+                self.__leg_coords = self.__BALANCE_LEG_COORDS - count * coord_diff / 10
 
                 self.__setServos()
                 sleep(.05)
@@ -224,6 +220,10 @@ class Control:
         z = round(- self.__l3 * sin(beta + gamma) - self.__l2 * sin(beta))
 
         return x, y, z
+
+    def relax(self):
+        for channel in self.__SERVO_CHANNELS.flatten():
+            self.__SERVO.relax(channel)
 
 # TODO Custom iterator
 # TODO Singleton classes
