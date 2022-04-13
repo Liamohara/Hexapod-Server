@@ -1,6 +1,3 @@
-import subprocess
-
-
 class Colours:
     RED = "\033[31m"
     CYAN = "\033[36m"
