@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
 from math import acos, atan2, cos, degrees, pi, radians, sin, sqrt
-from numpy import matrix
+from numpy import matrix, asarray
 from time import sleep
 
 from lib.Servo import Servo
@@ -73,7 +73,7 @@ class Control:
 
     def __setServos(self):
         if self.__inRangeOfMotion():
-            self.__calibratePosition()  # Use self.__calibrated_position
+            self.__calibrateCoords()
 
             for leg in range(6):
                 self.__angles[leg, 0], self.__angles[leg, 1], self.__angles[leg, 2] = self.__coordsToAngles(
@@ -93,6 +93,18 @@ class Control:
 
         else:
             print("Coordinate is not in effective range of motion")
+
+    def __inRangeOfMotion(self):
+        for leg in range(6):
+            extension = sqrt(
+                self.__leg_coords[leg, 0]**2 + self.__leg_coords[leg, 1]**2 + self.__leg_coords[leg, 2]**2)  # The distance from the base frame to the end effector.
+            if extension < 90 or self.__leg_coords[leg, 0] < 0:
+                return False
+
+        return True
+
+    def __calibrateCoords(self):
+        self.__calibrated_leg_coords = self.__leg_coords + self.__COORD_OFFSET
 
     def __coordsToAngles(self, x, y, z):
         ###### Inverse Kinematics ######
@@ -115,17 +127,21 @@ class Control:
 
         return a, b, c
 
-    def __inRangeOfMotion(self):
-        for leg in range(6):
-            extension = sqrt(
-                self.__leg_coords[leg, 0]**2 + self.__leg_coords[leg, 1]**2 + self.__leg_coords[leg, 2]**2)  # The distance from the base frame to the end effector.
-            if extension < 90 or self.__leg_coords[leg, 0] < 0:
-                return False
+    def __anglesToCoords(self, a, b, c):
+        # Converting angles for use in forward kinematic calculations.
+        alpha = pi/2 - radians(a)
+        beta = radians(b) - pi/2
+        gamma = radians(c) - pi/2
 
-        return True
+        ###### Forward Kinematics ######
+        r = self.__l1 + self.__l2 * cos(beta) + self.__l3 * cos(beta + gamma)
 
-    def __calibratePosition(self):
-        self.__calibrated_leg_coords = self.__leg_coords + self.__COORD_OFFSET
+        x = round(cos(alpha) * r)
+        y = round(sin(alpha) * r)
+
+        z = round(- self.__l3 * sin(beta + gamma) - self.__l2 * sin(beta))
+
+        return x, y, z
 
     def __restrict(self, value, min, max):
         if value < min:
@@ -135,10 +151,14 @@ class Control:
         else:
             return value
 
-    def __balance(self):  #  TODO Save for API
+    def balance(self):  #  TODO Save for API
         self.__leg_coords = deepcopy(self.__BALANCE_LEG_COORDS)
 
         self.__setServos()
+
+    def relax(self):
+        for channel in asarray(self.__SERVO_CHANNELS).flatten():
+            self.__SERVO.relax(channel)
 
     def walk(self, paces, angle, precision=40):
         #############
@@ -164,7 +184,7 @@ class Control:
         if 90 > abs(angle) > 270:
             y_dir *= -1
 
-        self.__balance()
+        self.balance()
 
         for _ in range(paces):
             step = int(80/precision)
@@ -203,28 +223,6 @@ class Control:
                 self.__setServos()
                 sleep(.05)
 
-    # For API
-
-    def __anglesToCoords(self, a, b, c):
-        # Converting angles for use in forward kinematic calculations.
-        alpha = pi/2 - radians(a)
-        beta = radians(b) - pi/2
-        gamma = radians(c) - pi/2
-
-        ###### Forward Kinematics ######
-        r = self.__l1 + self.__l2 * cos(beta) + self.__l3 * cos(beta + gamma)
-
-        x = round(cos(alpha) * r)
-        y = round(sin(alpha) * r)
-
-        z = round(- self.__l3 * sin(beta + gamma) - self.__l2 * sin(beta))
-
-        return x, y, z
-
-    def relax(self):
-        for channel in self.__SERVO_CHANNELS.flatten():
-            self.__SERVO.relax(channel)
-
-# TODO Custom iterator
-# TODO Singleton classes
-# TODO Set height of body
+    def setLegPosition(self, leg, x, y, z):
+        self.__leg_coords[leg] = [x, y, z]
+        self.__setServos()
