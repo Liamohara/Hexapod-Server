@@ -151,7 +151,7 @@ class Control:
         else:
             return value
 
-    def balance(self):  #  TODO Save for API
+    def balance(self):
         self.__leg_coords = deepcopy(self.__BALANCE_LEG_COORDS)
 
         self.__setServos()
