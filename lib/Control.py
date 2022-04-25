@@ -200,7 +200,6 @@ class Control:
                     self.__leg_coords[2] = [140 + x, y, z]
                     self.__leg_coords[4] = [140 - x, y, z]
 
-                    self.__setServos()
                 else:
                     distance -= 40
                     x = distance * x_dir
@@ -210,8 +209,7 @@ class Control:
                     self.__leg_coords[3] = [140 - x, y, z]
                     self.__leg_coords[5] = [140 - x, y, z]
 
-                    self.__setServos()
-
+                self.__setServos()
                 sleep(.05)
 
             # Moves Hexapod into balance position SLOWLY so legs don't slip.
