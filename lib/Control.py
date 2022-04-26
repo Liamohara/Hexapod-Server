@@ -222,5 +222,8 @@ class Control:
                 sleep(.05)
 
     def setLegPosition(self, leg, x, y, z):
-        self.__leg_coords[leg] = [x, y, z]
-        self.__setServos()
+        if 0 < leg < 7:
+            self.__leg_coords[leg-1] = [x, y, z]
+            self.__setServos()
+        else:
+            print("Invalid leg number")
